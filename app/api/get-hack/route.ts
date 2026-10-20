@@ -6,6 +6,16 @@ import payload from '@/lib/payload';
 
 export const runtime = 'nodejs';
 
+function isUniqueViolation(error: unknown): boolean {
+  let current: unknown = error;
+  while (current && typeof current === 'object') {
+    if ('code' in current && current.code === '23505') return true;
+    current = 'cause' in current ? current.cause : undefined;
+  }
+  return false;
+}
+
+
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60_000;
 const requestsByIp = new Map<string, number[]>();
@@ -76,7 +86,7 @@ export async function POST(request: Request) {
       payload
     });
   } catch (error) {
-    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
+    if (isUniqueViolation(error)) {
       return publicJson(request, { error: 'Device is already assigned to another license' }, 409);
     }
     console.error('License payload request failed:', error instanceof Error ? error.message : 'unknown error');

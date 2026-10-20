@@ -5,6 +5,16 @@ import { verifyLicenseToken } from '@/lib/auth';
 import { json, options, readJson } from '@/lib/http';
 export const runtime = 'nodejs';
 export function OPTIONS(request: Request) { return options(request); }
+
+function isUniqueViolation(error: unknown): boolean {
+  let current: unknown = error;
+  while (current && typeof current === 'object') {
+    if ('code' in current && current.code === '23505') return true;
+    current = 'cause' in current ? current.cause : undefined;
+  }
+  return false;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await readJson(request);
@@ -27,7 +37,7 @@ export async function POST(request: Request) {
     }
     return json(request, { ok: true, username: user.username, deviceId });
   } catch (error: unknown) {
-    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') return json(request, { error: 'Device is already assigned to another license' }, 409);
+    if (isUniqueViolation(error)) return json(request, { error: 'Device is already assigned to another license' }, 409);
     console.error('Activation failed:', error instanceof Error ? error.message : 'unknown error');
     return json(request, { error: 'Unable to activate license' }, 500);
   }
