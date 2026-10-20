@@ -1,13 +1,12 @@
 (function() {
-    console.log("⚙️ HACK ENGINE LOADED (Smooth Glide Mode)");
+    console.log("⚙️ HACK ENGINE LOADED (Infinite Hold Mode)");
 
     let hackSettings = {
         isRunning: false,
         price: null,
-        intervalTime: 5,
+        delayTime: 5,
         hackActive: false,
-        intervalId: null,
-        hasCountedThisPulse: false
+        timeoutId: null
     };
 
     let currentVirtualPrice = null; 
@@ -17,61 +16,52 @@
     TextDecoder.prototype.decode = function(...args) {
         let text = originalDecode.apply(this, args);
 
-        // Check if it's a tick: [["BTCUSD_otc", 1792344807.672, 83949.13, 1]]
         if (typeof text === "string" && text.startsWith('[["') && text.split(",").length === 4) {
             
+            // If hack is disabled, pass real data
             if (!hackSettings.isRunning || !hackSettings.hackActive) {
                 currentVirtualPrice = null; 
                 return text; 
             }
 
-            // 🚨 THE FOOLPROOF SPLIT METHOD 🚨
             let parts = text.split(",");
-            
-            // parts[0] = '[["BTCUSD_otc"'
-            // parts[1] = ' 1792344807.672'
-            // parts[2] = ' 83949.13'  <-- THIS IS THE PRICE
-            // parts[3] = ' 1]]'
             
             const realPrice = parseFloat(parts[2]);
             const targetPrice = parseFloat(hackSettings.price);
-            
-            // Get how many decimals the user wants (e.g. 8260.00 = 2, 1.3050 = 4)
             const decimalPlaces = (hackSettings.price.toString().split('.')[1] || '').length || 2;
 
-            // Initialize the virtual price on the first tick
+            // Initialize the virtual price on the first hacked tick
             if (currentVirtualPrice === null) {
                 currentVirtualPrice = realPrice;
+                console.log(`🚀 INITIALIZING GLIDE FROM REAL PRICE: ${realPrice}`);
             }
 
             let finalPrice;
             const gap = targetPrice - currentVirtualPrice;
 
-            // 🚨 THE MATH 🚨
-            // If we are far from the target, GLIDE 5% of the distance per tick
+            // 🚨 GLIDE vs FLUCTUATE
+            // If the gap is larger than 0.1% of the target, we are still gliding
             if (Math.abs(gap) > (targetPrice * 0.001)) {
-                currentVirtualPrice += gap * 0.05; 
+                currentVirtualPrice += gap * 0.05; // Glide 5% closer each tick
                 finalPrice = currentVirtualPrice;
             } else {
-                // If we are close, FLUCTUATE naturally around the target (0.05% variance)
-                const volatility = 0.0005; 
+                // We are close enough! Now apply the natural fluctuation around the target
+                const volatility = 0.0005; // 0.05% fluctuation
                 const randomOffset = (Math.random() - 0.5) * (targetPrice * volatility);
                 finalPrice = targetPrice + randomOffset;
                 
-                // Keep the anchor at target so it doesn't drift away over time
+                // Keep currentVirtualPrice anchored to the target to prevent drift
                 currentVirtualPrice = targetPrice; 
             }
 
             const newPriceStr = finalPrice.toFixed(decimalPlaces);
             
-            // Put the hacked price back into the array
+            // Replace the price in the split array
             parts[2] = " " + newPriceStr; 
             const hackedText = parts.join(",");
 
-            if (!hackSettings.hasCountedThisPulse) {
-                window.postMessage({ type: "INCREMENT_INTERCEPT" }, "*");
-                hackSettings.hasCountedThisPulse = true;
-            }
+            // Update the UI counter
+            window.postMessage({ type: "INCREMENT_INTERCEPT" }, "*");
 
             return hackedText;
         }
@@ -82,28 +72,30 @@
         if (event.source !== window) return;
         
         if (event.data && event.data.type === "START_HACK") {
+            console.log(`⏳ START_HACK RECEIVED! Waiting ${event.data.time} seconds before hacking...`);
+            
             hackSettings.price = parseFloat(event.data.price).toFixed(2);
-            hackSettings.intervalTime = parseInt(event.data.time);
+            hackSettings.delayTime = parseInt(event.data.time);
             hackSettings.isRunning = true;
+            hackSettings.hackActive = false; // Wait for the delay
             currentVirtualPrice = null; 
 
-            if (hackSettings.intervalId) clearInterval(hackSettings.intervalId);
+            if (hackSettings.timeoutId) clearTimeout(hackSettings.timeoutId);
 
-            hackSettings.intervalId = setInterval(() => {
-                hackSettings.hackActive = true;
-                hackSettings.hasCountedThisPulse = false;
-                setTimeout(() => {
-                    hackSettings.hackActive = false;
-                }, 1000); 
-            }, hackSettings.intervalTime * 1000);
+            // 🚨 THE FIX: Use setTimeout instead of setInterval
+            hackSettings.timeoutId = setTimeout(() => {
+                console.log(`🔥 DELAY OVER! Locking onto target: ${hackSettings.price}`);
+                hackSettings.hackActive = true; // Stay active forever until STOP
+                currentVirtualPrice = null; // Re-initialize glide from the current real price
+            }, hackSettings.delayTime * 1000);
         }
 
         if (event.data && event.data.type === "STOP_HACK") {
+            console.log("🛑 STOP_HACK RECEIVED! Returning to real data.");
             hackSettings.isRunning = false;
             hackSettings.hackActive = false;
-            hackSettings.hasCountedThisPulse = false;
             currentVirtualPrice = null; 
-            if (hackSettings.intervalId) clearInterval(hackSettings.intervalId);
+            if (hackSettings.timeoutId) clearTimeout(hackSettings.timeoutId);
         }
     });
 })();
