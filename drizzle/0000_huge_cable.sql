@@ -1,5 +1,9 @@
-CREATE TYPE "public"."user_status" AS ENUM('active', 'ended', 'revoked');--> statement-breakpoint
-CREATE TABLE "users" (
+DO $$ BEGIN
+	CREATE TYPE "public"."user_status" AS ENUM('active', 'ended', 'revoked');
+EXCEPTION
+	WHEN duplicate_object THEN null;
+END $$;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "users" (
 	"username" text PRIMARY KEY NOT NULL,
 	"email" text,
 	"license_key" text NOT NULL,

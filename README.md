@@ -26,9 +26,8 @@ QAdmin is a single Next.js App Router application. It contains the dashboard and
    ```
 
 `npm run build` applies committed database migrations, generates the obfuscated
-payload, and then builds Next.js. Make sure `DATABASE_URL` is available when
-running a build. `db:generate` is only needed after changing `db/schema.ts` to
-create a new migration.
+payload, and builds Next.js. `db:generate` is only needed after changing
+`db/schema.ts` to create a new migration.
 
 The admin login is at `/login`. The health endpoint is `/api/health`.
 
@@ -44,10 +43,10 @@ All API routes return JSON, support `OPTIONS`, include CORS headers, and run on 
 
 ## Vercel deployment
 
-Import this repository as a single Vercel project. Configure the four environment variables in Vercel Project Settings for the relevant environments. Do not commit `.env`; Vercel supplies the variables at runtime. The build applies migrations against the configured PostgreSQL database. If your deployment platform does not provide `DATABASE_URL` during the build, run migrations separately from a trusted environment:
-
-```bash
-npm run db:migrate
-```
+Import this repository as a single Vercel project. Configure the four
+environment variables in Vercel Project Settings for the relevant
+environments. Do not commit `.env`; Vercel supplies the variables at runtime.
+Vercel runs `npm run build`, which automatically applies committed migrations
+before building the application.
 
 After deployment, verify `https://your-domain.vercel.app/api/health`, then use `/login` for administration. External clients can call the deployed API URL when their origin matches `CORS_ORIGIN`.
