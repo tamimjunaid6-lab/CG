@@ -12,7 +12,7 @@ QAdmin is a single Next.js App Router application. It contains the dashboard and
 
 2. Copy `.env.example` to `.env` and set `DATABASE_URL`, `ADMIN_HASH`, and a long random `JWT_SECRET`. Set `CORS_ORIGIN` to the exact external frontend origin, or leave it unset during local development to allow localhost origins.
 
-3. Generate and apply the schema:
+3. Generate and apply schema:
 
    ```bash
    npm run db:generate
